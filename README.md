@@ -1,6 +1,10 @@
 # backup-remote-rs
 A tool for managing remote backups in AWS Glacier.
 
+# Note
+This tool uses the AWS Glacier API.
+The Rust SDK does not support Glacier yet (July 2021).
+
 # Prerequisites
 The tool needs some basic information about the Glacier account and a system user with access to the account.
 The information is provided as environment variables.
