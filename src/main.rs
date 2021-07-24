@@ -47,6 +47,24 @@ async fn main() -> Result<()> {
                         .multiple(false),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("job-output")
+                .about("get the output of a job")
+                .arg(
+                    Arg::with_name("vault_name")
+                        .required(true)
+                        .long("vault_name")
+                        .takes_value(true)
+                        .multiple(false),
+                )
+                .arg(
+                    Arg::with_name("job_id")
+                        .required(true)
+                        .long("job_id")
+                        .takes_value(true)
+                        .multiple(false),
+                ),
+        )
         .get_matches();
 
     let secret_key = String::from(matches.value_of("secret_key").unwrap());
@@ -74,18 +92,61 @@ async fn main() -> Result<()> {
                 )
                 .await
             }
+            "job-output" => {
+                job_output(
+                    &secret_key,
+                    &key_id,
+                    &region,
+                    subcommand.matches.value_of("vault_name").unwrap(),
+                    subcommand.matches.value_of("job_id").unwrap(),
+                )
+                .await
+            }
             _ => Err(anyhow::Error::msg("unexpected subcommand")),
         },
         None => Err(anyhow::Error::msg("no subcommand found")),
     }
 }
 
-async fn list_jobs(
+async fn job_output(
     secret_key: &str,
     key_id: &str,
     region: &str,
     vault_name: &str,
+    job_id: &str,
 ) -> Result<()> {
+    let http_method = "GET";
+    let body = "";
+    let https = HttpsConnector::new();
+    let client = Client::builder().build::<_, hyper::Body>(https);
+    let date_time = Utc::now();
+    let uri = format!(
+        "https://glacier.{}.amazonaws.com/-/vaults/{}/jobs/{}/output",
+        region, vault_name, job_id
+    )
+    .parse::<Uri>()?;
+    let hash_body = sha_256_hash(body.as_bytes())?;
+    let hash_request = hash_request(http_method, &uri, &date_time, &*hash_body)?;
+    let signature = signature(&*secret_key, &date_time, &*region, &*hash_request)?;
+    let req = Request::builder()
+        .method(http_method)
+        .uri(uri)
+        .header("Authorization", format!("AWS4-HMAC-SHA256 Credential={}/{}/{}/glacier/aws4_request,SignedHeaders=host;x-amz-date;x-amz-glacier-version,Signature={}", key_id, date_time.format("%Y%m%d"), region, signature))
+        .header("x-amz-date", date_time.format("%Y%m%dT%H%M%SZ").to_string())
+        .header("x-amz-glacier-version", "2012-06-01")
+        .body(Body::from(body))?;
+    let mut resp = client.request(req).await?;
+
+    println!("Response: {}", resp.status());
+
+    while let Some(chunk) = resp.body_mut().data().await {
+        stdout().write_all(&chunk?).await?;
+    }
+
+    Ok(())
+}
+
+async fn list_jobs(secret_key: &str, key_id: &str, region: &str, vault_name: &str) -> Result<()> {
     let http_method = "GET";
     let body = "";
     let https = HttpsConnector::new();
