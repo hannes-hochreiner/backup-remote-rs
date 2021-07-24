@@ -1,5 +1,4 @@
 use anyhow::Result;
-use chrono::prelude::*;
 use chrono::{DateTime, Utc};
 use data_encoding::HEXLOWER;
 use hyper::body::HttpBody as _;
@@ -9,15 +8,42 @@ use hyper_tls::HttpsConnector;
 use ring::{digest, hmac};
 use std::env;
 use tokio::io::{stdout, AsyncWriteExt as _};
+extern crate clap;
+use clap::{App, Arg, SubCommand};
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let matches = App::new("backup-remote-rs")
+        .version(env!("CARGO_PKG_VERSION"))
+        .author(env!("CARGO_PKG_AUTHORS"))
+        .about(env!("CARGO_PKG_DESCRIPTION"))
+        .arg(
+            Arg::with_name("secret_key")
+                .required(true)
+                .env("AWS_SECRET_KEY"),
+        )
+        .arg(Arg::with_name("key_id").required(true).env("AWS_KEY_ID"))
+        .arg(Arg::with_name("region").required(true).env("AWS_REGION"))
+        .subcommand(SubCommand::with_name("list-vaults").about("list all vaults"))
+        .get_matches();
+
+    let secret_key = String::from(matches.value_of("secret_key").unwrap());
+    let key_id = String::from(matches.value_of("key_id").unwrap());
+    let region = String::from(matches.value_of("region").unwrap());
+
+    match matches.subcommand {
+        Some(subcommand) => match &*subcommand.name {
+            "list-vaults" => list_vaults(&secret_key, &key_id, &region).await,
+            _ => Err(anyhow::Error::msg("unexpected subcommand")),
+        },
+        None => Err(anyhow::Error::msg("no subcommand found")),
+    }
+}
+
+async fn list_vaults(secret_key: &str, key_id: &str, region: &str) -> Result<()> {
     let https = HttpsConnector::new();
     let client = Client::builder().build::<_, hyper::Body>(https);
     let date_time = Utc::now();
-    let secret_key = env::var("AWS_SECRET_KEY")?;
-    let key_id = env::var("AWS_KEY_ID")?;
-    let region = env::var("AWS_REGION")?;
     let uri = format!("https://glacier.{}.amazonaws.com/-/vaults", region).parse::<Uri>()?;
     let hash_body = sha_256_hash(&[])?;
     let hash_request = hash_request("GET", &uri, &date_time, &*hash_body)?;
@@ -95,6 +121,8 @@ fn signature(
 
 #[cfg(test)]
 mod tests {
+    use chrono::TimeZone;
+
     use super::*;
 
     #[test]
