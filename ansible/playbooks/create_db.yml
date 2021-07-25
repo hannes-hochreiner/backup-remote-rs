@@ -1,0 +1,11 @@
+---
+  - name: "Creating Database"
+    hosts: localhost
+    connection: local 
+    tasks:
+    - name: Include variables
+      include_vars: ../vars.yml
+    - name: Create container
+      include: ../tasks/create_container.yml
+    - name: Init Db
+      include: ../tasks/init_db.yml

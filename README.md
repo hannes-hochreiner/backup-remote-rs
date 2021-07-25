@@ -14,3 +14,21 @@ The information is provided as environment variables.
 | AWS_REGION | region, where the vault is located (e.g. "eu-central-1") |
 | AWS_SECRET_KEY | secret access key obtained when creating the user |
 | AWS_KEY_ID | key id obtained when creating the user |
+
+# Development
+
+## Setup
+
+An Ansible script automating this process can be found in the `ansible` folder.
+The scripts expects the variables listed in the table below, which must be provided in a file names `vars.yml` in the Ansible folder.
+
+| variable name | description |
+| ------------- | ----------- |
+| postgres_password | db master password |
+| updater_password | password for the updater user |
+
+If the passwords are encrypted with Ansible vault, the ansible script can be run with the following command:
+
+```bash
+ansible-playbook --ask-vault-pass ansible/db_create_pb.yml
+```

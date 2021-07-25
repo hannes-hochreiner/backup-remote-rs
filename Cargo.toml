@@ -14,5 +14,7 @@ data-encoding = "2"
 hyper = { version = "0", features = ["full"] }
 tokio = { version = "1", features = ["full"] }
 hyper-tls = "0"
-chrono = "0"
+chrono = { version = "0", features = ["serde"] }
 clap = "2"
+tokio-postgres = { version = "0", features = ["with-uuid-0_8", "with-chrono-0_4"] }
+uuid = { version = "0.8", features = ["v4", "serde"] }

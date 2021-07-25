@@ -1,0 +1,6 @@
+- name: "Load SQL script into a variable"
+  set_fact:
+    sql_script: "{{lookup('template', '../../postgres/2021-07-25_create_db.sql') }}"
+
+- name: "Execute script from variable"
+  command: "/usr/bin/psql postgresql://postgres:{{postgres_password}}@localhost:5432/offsite_backup -c \"{{ sql_script }}\""
