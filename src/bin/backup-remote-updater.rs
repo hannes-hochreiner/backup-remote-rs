@@ -27,11 +27,9 @@ async fn main() -> Result<()> {
         matches.value_of("region").unwrap(),
     );
 
-    let list_json = aws_glacier.list_vaults().await?;
+    let vault_list = aws_glacier.list_vaults().await?;
 
-    for vault in list_json["VaultList"].as_array().ok_or(anyhow::Error::msg("could not read vault list"))? {
-        println!("{:?}: CreationDate: {:?}, LastInventoryDate: {:?}", vault["VaultName"].as_str(), vault["CreationDate"].as_str(), vault["LastInventoryDate"].as_str());
-    }
+    println!("{:?}", vault_list);
     // If the inventory of a vault is older than 1 week, launch an inventory job
 
     // Check inventory jobs and launch workers as needed

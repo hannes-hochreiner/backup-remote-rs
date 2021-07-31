@@ -1,3 +1,4 @@
+use crate::model::AwsVault;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use data_encoding::HEXLOWER;
@@ -6,6 +7,7 @@ use hyper::{Body, Client, Request};
 use hyper_tls::HttpsConnector;
 use ring::{digest, hmac};
 use serde_json::Value;
+use std::convert::TryFrom;
 
 pub struct AwsGlacier {
     secret_key: String,
@@ -22,7 +24,7 @@ impl AwsGlacier {
         }
     }
 
-    pub async fn list_vaults(&self) -> Result<Value> {
+    pub async fn list_vaults(&self) -> Result<Vec<AwsVault>> {
         let https = HttpsConnector::new();
         let client = Client::builder().build::<_, hyper::Body>(https);
         let date_time = Utc::now();
@@ -44,10 +46,18 @@ impl AwsGlacier {
             hyper::StatusCode::OK => {
                 let resp_body = hyper::body::to_bytes(resp).await?;
                 let resp_json: Value = serde_json::from_slice(&resp_body)?;
-                
-                Ok(resp_json)
-            },
-            _ => Err(anyhow::Error::msg("failed to retrieve vault list"))
+                let mut res = Vec::<AwsVault>::new();
+
+                for vault in resp_json["VaultList"]
+                    .as_array()
+                    .ok_or(anyhow::Error::msg("could not read vault list"))?
+                {
+                    res.push(AwsVault::try_from(vault)?);
+                }
+
+                Ok(res)
+            }
+            _ => Err(anyhow::Error::msg("failed to retrieve vault list")),
         }
     }
 
