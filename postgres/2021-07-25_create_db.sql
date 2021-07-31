@@ -1,5 +1,6 @@
 CREATE TABLE vaults (
   id uuid PRIMARY KEY,
+  revision uuid NOT NULL,
   creation_date timestamp with time zone NOT NULL,
   inventory_date timestamp with time zone,
   number_of_archives integer NOT NULL,
@@ -10,6 +11,7 @@ CREATE TABLE vaults (
 
 CREATE TABLE archives (
   id uuid PRIMARY KEY,
+  revision uuid NOT NULL,
   creation_date timestamp with time zone NOT NULL,
   inventory_date timestamp with time zone,
   vault_id uuid REFERENCES vaults(id),
