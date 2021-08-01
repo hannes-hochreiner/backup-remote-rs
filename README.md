@@ -14,6 +14,7 @@ The information is provided as environment variables.
 | AWS_REGION | region, where the vault is located (e.g. "eu-central-1") |
 | AWS_SECRET_KEY | secret access key obtained when creating the user |
 | AWS_KEY_ID | key id obtained when creating the user |
+| DB_CONNECTION | database connection (e.g. "postgresql://&lt;updater db user&gt;:&lt;updater password&gt;@&lt;host&gt;:5432/rss_json") |
 
 # Development
 

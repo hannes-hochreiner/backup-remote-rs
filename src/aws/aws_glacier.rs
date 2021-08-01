@@ -1,4 +1,4 @@
-use crate::model::AwsVault;
+use super::aws_vault::AwsVault;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use data_encoding::HEXLOWER;
