@@ -3,7 +3,7 @@ CREATE TABLE vaults (
   revision uuid NOT NULL,
   creation_date timestamp with time zone NOT NULL,
   inventory_date timestamp with time zone,
-  number_of_archives integer NOT NULL,
+  number_of_archives bigint NOT NULL,
   size_in_bytes bigint NOT NULL,
   vault_arn varchar(256) UNIQUE NOT NULL,
   vault_name varchar(256) UNIQUE NOT NULL

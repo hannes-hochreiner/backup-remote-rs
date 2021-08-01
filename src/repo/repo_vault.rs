@@ -4,16 +4,16 @@ use std::convert::TryFrom;
 use tokio_postgres::Row;
 use uuid::Uuid;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RepoVault {
-    id: Uuid,
-    revision: Uuid,
-    creation_date: DateTime<FixedOffset>,
-    inventory_date: Option<DateTime<FixedOffset>>,
-    number_of_archives: i64,
-    size_in_bytes: i64,
-    vault_arn: String,
-    vault_name: String,
+    pub id: Uuid,
+    pub revision: Uuid,
+    pub creation_date: DateTime<FixedOffset>,
+    pub inventory_date: Option<DateTime<FixedOffset>>,
+    pub number_of_archives: i64,
+    pub size_in_bytes: i64,
+    pub vault_arn: String,
+    pub vault_name: String,
 }
 
 impl TryFrom<&Row> for RepoVault {

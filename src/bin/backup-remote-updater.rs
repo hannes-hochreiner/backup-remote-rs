@@ -1,7 +1,7 @@
 extern crate backup_remote_rs;
 use anyhow::Result;
-use backup_remote_rs::aws::aws_glacier::AwsGlacier;
 use backup_remote_rs::repo::Repository;
+use backup_remote_rs::{aws::aws_glacier::AwsGlacier, repo::repo_vault::RepoVault};
 extern crate clap;
 use clap::{App, Arg};
 
@@ -33,12 +33,41 @@ async fn main() -> Result<()> {
         matches.value_of("region").unwrap(),
     );
     let repo = Repository::new(matches.value_of("db_connection").unwrap()).await?;
-    let vault_list = aws_glacier.list_vaults().await?;
+    let aws_vaults = aws_glacier.list_vaults().await?;
     let repo_vaults = repo.get_vaults().await?;
+    let mut vaults = Vec::<RepoVault>::new();
 
-    println!("{:?}", vault_list);
-    println!("{:?}", repo_vaults);
+    for vault in aws_vaults {
+        match repo_vaults.iter().find(|&v| v.vault_arn == vault.vault_arn) {
+            None => {
+                vaults.push(
+                    repo.create_vault(
+                        &vault.creation_date,
+                        &vault.inventory_date,
+                        &vault.number_of_archives,
+                        &vault.size_in_bytes,
+                        &vault.vault_arn,
+                        &vault.vault_name,
+                    )
+                    .await?,
+                );
+            }
+            Some(v) => {
+                let mut v_new = v.clone();
 
+                v_new.creation_date = vault.creation_date;
+                v_new.inventory_date = vault.inventory_date;
+                v_new.number_of_archives = vault.number_of_archives;
+                v_new.size_in_bytes = vault.size_in_bytes;
+                v_new.vault_name = vault.vault_name;
+
+                vaults.push(repo.update_vault(&v_new).await?);
+            }
+        }
+    }
+
+    println!("{:?}", vaults);
+    
     // If the inventory of a vault is older than 1 week, launch an inventory job
 
     // Check inventory jobs and launch workers as needed

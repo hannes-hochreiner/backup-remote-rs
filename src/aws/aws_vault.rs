@@ -5,12 +5,12 @@ use std::convert::TryFrom;
 
 #[derive(Debug)]
 pub struct AwsVault {
-    creation_date: DateTime<FixedOffset>,
-    inventory_date: Option<DateTime<FixedOffset>>,
-    number_of_archives: u64,
-    size_in_bytes: u64,
-    vault_arn: String,
-    vault_name: String,
+    pub creation_date: DateTime<FixedOffset>,
+    pub inventory_date: Option<DateTime<FixedOffset>>,
+    pub number_of_archives: i64,
+    pub size_in_bytes: i64,
+    pub vault_arn: String,
+    pub vault_name: String,
 }
 
 impl TryFrom<&Value> for AwsVault {
@@ -32,10 +32,10 @@ impl TryFrom<&Value> for AwsVault {
                 None => None,
             },
             number_of_archives: value["NumberOfArchives"]
-                .as_u64()
+                .as_i64()
                 .ok_or(anyhow::Error::msg("number of archives not found"))?,
             size_in_bytes: value["SizeInBytes"]
-                .as_u64()
+                .as_i64()
                 .ok_or(anyhow::Error::msg("size in bytes not found"))?,
             vault_arn: value["VaultARN"]
                 .as_str()
