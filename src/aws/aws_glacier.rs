@@ -112,3 +112,54 @@ fn hash_request(
     let req = format!("{}\n{}\n\nhost:{}\nx-amz-date:{}\nx-amz-glacier-version:2012-06-01\n\nhost;x-amz-date;x-amz-glacier-version\n{}", verb, uri.path(), uri.host().unwrap(), date_time.format("%Y%m%dT%H%M%SZ"), payload_hash);
     sha_256_hash(req.as_bytes())
 }
+
+#[cfg(test)]
+mod tests {
+    use chrono::TimeZone;
+
+    use super::*;
+
+    #[test]
+    fn sha_256_hash_1() {
+        assert_eq!(
+            sha_256_hash(&[]).unwrap(),
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
+    }
+
+    #[test]
+    fn hash_request_1() {
+        assert_eq!(
+            hash_request(
+                "PUT",
+                &"https://glacier.us-east-1.amazonaws.com/-/vaults/examplevault"
+                    .parse::<Uri>()
+                    .unwrap(),
+                &Utc.ymd(2012, 5, 25).and_hms(0, 24, 53),
+                "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            )
+            .unwrap(),
+            "5f1da1a2d0feb614dd03d71e87928b8e449ac87614479332aced3a701f916743"
+        );
+    }
+
+    #[test]
+    fn signature_1() {
+        let ag = AwsGlacier::new(
+            "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+            "key_id",
+            "us-east-1",
+        );
+        let sig = ag
+            .signature(
+                &Utc.ymd(2012, 5, 25).and_hms(0, 24, 53),
+                "5f1da1a2d0feb614dd03d71e87928b8e449ac87614479332aced3a701f916743",
+            )
+            .unwrap();
+
+        assert_eq!(
+            sig,
+            "3ce5b2f2fffac9262b4da9256f8d086b4aaf42eba5f111c21681a65a127b7c2a"
+        );
+    }
+}
