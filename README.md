@@ -15,6 +15,7 @@ The information is provided as environment variables.
 | AWS_SECRET_KEY | secret access key obtained when creating the user |
 | AWS_KEY_ID | key id obtained when creating the user |
 | DB_CONNECTION | database connection (e.g. "postgresql://&lt;updater db user&gt;:&lt;updater password&gt;@&lt;host&gt;:5432/rss_json") |
+| RUST_LOG | log level (i.e. error, warn, info, debug, trace) |
 
 # Development
 

@@ -4,9 +4,12 @@ use backup_remote_rs::repo::Repository;
 use backup_remote_rs::{aws::aws_glacier::AwsGlacier, repo::repo_vault::RepoVault};
 extern crate clap;
 use clap::{App, Arg};
+use log::{debug, info};
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    env_logger::init();
+
     // Process arguments
     let matches = App::new("backup-remote-updater")
         .version(env!("CARGO_PKG_VERSION"))
@@ -27,14 +30,18 @@ async fn main() -> Result<()> {
         .get_matches();
 
     // Update list of vaults
+    debug!("creating aws glacier object");
     let aws_glacier = AwsGlacier::new(
         matches.value_of("secret_key").unwrap(),
         matches.value_of("key_id").unwrap(),
         matches.value_of("region").unwrap(),
     );
+    debug!("creating repository object");
     let repo = Repository::new(matches.value_of("db_connection").unwrap()).await?;
     let aws_vaults = aws_glacier.list_vaults().await?;
+    debug!("found {} aws vaults", aws_vaults.len());
     let repo_vaults = repo.get_vaults().await?;
+    debug!("found {} repository vaults", repo_vaults.len());
     let mut vaults = Vec::<RepoVault>::new();
 
     for vault in aws_vaults {
@@ -51,6 +58,7 @@ async fn main() -> Result<()> {
                     )
                     .await?,
                 );
+                info!("added vault \"{}\" to repository", vault.vault_name);
             }
             Some(v) => {
                 let mut v_new = v.clone();
@@ -62,11 +70,10 @@ async fn main() -> Result<()> {
                 v_new.vault_name = vault.vault_name;
 
                 vaults.push(repo.update_vault(&v_new).await?);
+                info!("updated vault \"{}\" in repository", v_new.vault_name);
             }
         }
     }
-
-    println!("{:?}", vaults);
 
     // If the inventory of a vault is older than 1 week, launch an inventory job
 
