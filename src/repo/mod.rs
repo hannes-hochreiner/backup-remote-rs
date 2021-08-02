@@ -5,6 +5,7 @@ use chrono::{DateTime, FixedOffset};
 use std::{convert::TryFrom, str};
 use tokio_postgres::{Client, NoTls};
 use uuid::Uuid;
+use log::{debug};
 
 use repo_vault::RepoVault;
 
@@ -28,6 +29,7 @@ impl Repository {
     }
 
     pub async fn get_vaults(&self) -> Result<Vec<RepoVault>> {
+        debug!("getting vaults");
         let rows = self.client.query("SELECT id, revision, creation_date, inventory_date, number_of_archives, size_in_bytes, vault_arn, vault_name FROM vaults", &[]).await?;
         let mut res = Vec::<RepoVault>::new();
 
@@ -47,6 +49,7 @@ impl Repository {
         vault_arn: &String,
         vault_name: &String,
     ) -> Result<RepoVault> {
+        debug!("creating new vault");
         let rows = self.client.query(
             "INSERT INTO vaults (id, revision, creation_date, inventory_date, number_of_archives, size_in_bytes, vault_arn, vault_name) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *", 
             &[&Uuid::new_v4(), &Uuid::new_v4(), creation_date, inventory_date, number_of_archives, size_in_bytes, vault_arn, vault_name]
@@ -59,6 +62,7 @@ impl Repository {
     }
 
     pub async fn update_vault(&self, vault: &RepoVault) -> Result<RepoVault> {
+        debug!("updating vault");
         let rows = self.client.query(
             "UPDATE vaults SET revision=$1, creation_date=$2, inventory_date=$3, number_of_archives=$4, size_in_bytes=$5, vault_arn=$6, vault_name=$7 WHERE id=$8 AND revision=$9 RETURNING *", 
             &[&Uuid::new_v4(), &vault.creation_date, &vault.inventory_date, &vault.number_of_archives, &vault.size_in_bytes, &vault.vault_arn, &vault.vault_name, &vault.id, &vault.revision]
