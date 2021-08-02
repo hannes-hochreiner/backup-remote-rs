@@ -67,7 +67,7 @@ async fn main() -> Result<()> {
     }
 
     println!("{:?}", vaults);
-    
+
     // If the inventory of a vault is older than 1 week, launch an inventory job
 
     // Check inventory jobs and launch workers as needed
