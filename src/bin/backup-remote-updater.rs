@@ -37,10 +37,11 @@ async fn main() -> Result<()> {
         matches.value_of("region").unwrap(),
     );
     debug!("creating repository object");
-    let repo = Repository::new(matches.value_of("db_connection").unwrap()).await?;
+    let mut repo = Repository::new(matches.value_of("db_connection").unwrap()).await?;
     let aws_vaults = aws_glacier.list_vaults().await?;
     debug!("found {} aws vaults", aws_vaults.len());
-    let repo_vaults = repo.get_vaults().await?;
+    let trans = repo.get_transaction().await?;
+    let repo_vaults = Repository::get_vaults(&trans).await?;
     debug!("found {} repository vaults", repo_vaults.len());
     let mut vaults = Vec::<RepoVault>::new();
 
@@ -48,7 +49,8 @@ async fn main() -> Result<()> {
         match repo_vaults.iter().find(|&v| v.vault_arn == vault.vault_arn) {
             None => {
                 vaults.push(
-                    repo.create_vault(
+                    Repository::create_vault(
+                        &trans,
                         &vault.creation_date,
                         &vault.inventory_date,
                         &vault.number_of_archives,
@@ -69,12 +71,14 @@ async fn main() -> Result<()> {
                 v_new.size_in_bytes = vault.size_in_bytes;
                 v_new.vault_name = vault.vault_name;
 
-                vaults.push(repo.update_vault(&v_new).await?);
+                vaults.push(Repository::update_vault(&trans, &v_new).await?);
                 info!("updated vault \"{}\" in repository", v_new.vault_name);
             }
         }
     }
 
+    trans.commit().await?;
+    
     // If the inventory of a vault is older than 1 week, launch an inventory job
 
     // Check inventory jobs and launch workers as needed

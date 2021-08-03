@@ -3,7 +3,7 @@ pub mod repo_vault;
 use anyhow::Result;
 use chrono::{DateTime, FixedOffset};
 use std::{convert::TryFrom, str};
-use tokio_postgres::{Client, NoTls};
+use tokio_postgres::{Client, NoTls, Transaction};
 use uuid::Uuid;
 use log::{debug};
 
@@ -28,9 +28,13 @@ impl Repository {
         Ok(Repository { client })
     }
 
-    pub async fn get_vaults(&self) -> Result<Vec<RepoVault>> {
+    pub async fn get_transaction(&mut self) -> Result<Transaction<'_>> {
+        self.client.transaction().await.map_err(|e| e.into())
+    }
+
+    pub async fn get_vaults(transaction: &Transaction<'_>) -> Result<Vec<RepoVault>> {
         debug!("getting vaults");
-        let rows = self.client.query("SELECT id, revision, creation_date, inventory_date, number_of_archives, size_in_bytes, vault_arn, vault_name FROM vaults", &[]).await?;
+        let rows = transaction.query("SELECT id, revision, creation_date, inventory_date, number_of_archives, size_in_bytes, vault_arn, vault_name FROM vaults", &[]).await?;
         let mut res = Vec::<RepoVault>::new();
 
         for row in rows {
@@ -41,7 +45,7 @@ impl Repository {
     }
 
     pub async fn create_vault(
-        &self,
+        transaction: &Transaction<'_>,
         creation_date: &DateTime<FixedOffset>,
         inventory_date: &Option<DateTime<FixedOffset>>,
         number_of_archives: &i64,
@@ -50,7 +54,7 @@ impl Repository {
         vault_name: &String,
     ) -> Result<RepoVault> {
         debug!("creating new vault");
-        let rows = self.client.query(
+        let rows = transaction.query(
             "INSERT INTO vaults (id, revision, creation_date, inventory_date, number_of_archives, size_in_bytes, vault_arn, vault_name) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *", 
             &[&Uuid::new_v4(), &Uuid::new_v4(), creation_date, inventory_date, number_of_archives, size_in_bytes, vault_arn, vault_name]
         ).await?;
@@ -61,9 +65,9 @@ impl Repository {
         }
     }
 
-    pub async fn update_vault(&self, vault: &RepoVault) -> Result<RepoVault> {
+    pub async fn update_vault(transaction: &Transaction<'_>, vault: &RepoVault) -> Result<RepoVault> {
         debug!("updating vault");
-        let rows = self.client.query(
+        let rows = transaction.query(
             "UPDATE vaults SET revision=$1, creation_date=$2, inventory_date=$3, number_of_archives=$4, size_in_bytes=$5, vault_arn=$6, vault_name=$7 WHERE id=$8 AND revision=$9 RETURNING *", 
             &[&Uuid::new_v4(), &vault.creation_date, &vault.inventory_date, &vault.number_of_archives, &vault.size_in_bytes, &vault.vault_arn, &vault.vault_name, &vault.id, &vault.revision]
         ).await?;
