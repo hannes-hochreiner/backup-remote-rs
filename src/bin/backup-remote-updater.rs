@@ -59,6 +59,9 @@ async fn main() -> Result<()> {
                 info!("updated vault \"{}\" in repository", v.vault_name);
             }
         }
+
+        let job_list = aws_glacier.list_jobs_for_vault(&vault).await?;
+        println!("{:?}", job_list);
     }
 
     trans.commit().await?;
