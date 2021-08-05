@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use chrono::{DateTime, FixedOffset};
 use serde_json::Value;
 use std::convert::TryFrom;
+use tokio_postgres::Row;
 
 #[derive(Debug)]
 pub struct AwsVault {
@@ -45,6 +46,21 @@ impl TryFrom<&Value> for AwsVault {
                 .as_str()
                 .ok_or(anyhow::Error::msg("vault name not found"))?
                 .into(),
+        })
+    }
+}
+
+impl TryFrom<&Row> for AwsVault {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &Row) -> Result<Self, Self::Error> {
+        Ok(AwsVault {
+            creation_date: value.try_get("creation_date")?,
+            inventory_date: value.try_get("inventory_date")?,
+            number_of_archives: value.try_get("number_of_archives")?,
+            size_in_bytes: value.try_get("size_in_bytes")?,
+            vault_arn: value.try_get("vault_arn")?,
+            vault_name: value.try_get("vault_name")?,
         })
     }
 }
