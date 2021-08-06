@@ -1,4 +1,4 @@
-use super::aws_vault::AwsVault;
+use super::aws_vault::{AwsVaultListResponse, AwsVault};
 use super::aws_job::{AwsJobListResponse, AwsJob};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
@@ -7,8 +7,6 @@ use hyper::Uri;
 use hyper::{Body, Client, Request};
 use hyper_tls::HttpsConnector;
 use ring::{digest, hmac};
-use serde_json::Value;
-use std::convert::TryFrom;
 
 pub struct AwsGlacier {
     secret_key: String,
@@ -46,17 +44,9 @@ impl AwsGlacier {
         match resp.status() {
             hyper::StatusCode::OK => {
                 let resp_body = hyper::body::to_bytes(resp).await?;
-                let resp_json: Value = serde_json::from_slice(&resp_body)?;
-                let mut res = Vec::<AwsVault>::new();
+                let resp_json: AwsVaultListResponse = serde_json::from_slice(&resp_body)?;
 
-                for vault in resp_json["VaultList"]
-                    .as_array()
-                    .ok_or(anyhow::Error::msg("could not read vault list"))?
-                {
-                    res.push(AwsVault::try_from(vault)?);
-                }
-
-                Ok(res)
+                Ok(resp_json.vault_list)
             }
             _ => Err(anyhow::Error::msg("failed to retrieve vault list")),
         }

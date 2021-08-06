@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize};
 use std::convert::TryFrom;
@@ -19,7 +19,7 @@ pub struct AwsJob {
     pub tree_hash: Option<String>,
     pub status_code: String,
     pub status_message: Option<String>,
-    #[serde(rename(serialize = "VaultARN"))]
+    #[serde(rename(deserialize = "VaultARN"))]
     pub vault_arn: String,
 }
 

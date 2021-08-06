@@ -1,53 +1,34 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use chrono::{DateTime, FixedOffset};
-use serde_json::Value;
 use std::convert::TryFrom;
 use tokio_postgres::Row;
+use serde::Deserialize;
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 pub struct AwsVault {
     pub creation_date: DateTime<FixedOffset>,
     pub inventory_date: Option<DateTime<FixedOffset>>,
     pub number_of_archives: i64,
     pub size_in_bytes: i64,
+    #[serde(rename(deserialize = "VaultARN"))]
     pub vault_arn: String,
     pub vault_name: String,
 }
 
-impl TryFrom<&Value> for AwsVault {
+impl TryFrom<&str> for AwsVault {
     type Error = anyhow::Error;
 
-    fn try_from(value: &Value) -> Result<Self, Self::Error> {
-        Ok(AwsVault {
-            creation_date: DateTime::parse_from_rfc3339(
-                value["CreationDate"]
-                    .as_str()
-                    .ok_or(anyhow::Error::msg("creation date not found"))?,
-            )
-            .context("error parsing creation date")?,
-            inventory_date: match value["LastInventoryDate"].as_str() {
-                Some(date_str) => Some(
-                    DateTime::parse_from_rfc3339(date_str)
-                        .context("error parsing creation date")?,
-                ),
-                None => None,
-            },
-            number_of_archives: value["NumberOfArchives"]
-                .as_i64()
-                .ok_or(anyhow::Error::msg("number of archives not found"))?,
-            size_in_bytes: value["SizeInBytes"]
-                .as_i64()
-                .ok_or(anyhow::Error::msg("size in bytes not found"))?,
-            vault_arn: value["VaultARN"]
-                .as_str()
-                .ok_or(anyhow::Error::msg("vault arn not found"))?
-                .into(),
-            vault_name: value["VaultName"]
-                .as_str()
-                .ok_or(anyhow::Error::msg("vault name not found"))?
-                .into(),
-        })
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        serde_json::from_str(value).map_err(|e| e.into())
     }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct AwsVaultListResponse {
+    pub vault_list: Vec<AwsVault>,
+    pub marker: Option<String>,
 }
 
 impl TryFrom<&Row> for AwsVault {
