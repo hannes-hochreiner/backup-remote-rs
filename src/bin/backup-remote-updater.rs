@@ -59,15 +59,31 @@ async fn main() -> Result<()> {
                 info!("updated vault \"{}\" in repository", v.vault_name);
             }
         }
+        
+        // update the list of jobs for this vault
+        let aws_jobs = aws_glacier.list_jobs_for_vault(&vault).await?;
+        
+        for job in aws_jobs {
+            match Repository::get_job_by_id(&trans, &*job.job_id).await {
+                Ok(_) => Repository::update_job(&trans, &job).await?,
+                Err(_) => Repository::create_job(&trans, &job).await?,
+            };
+        }
 
-        let job_list = aws_glacier.list_jobs_for_vault(&vault).await?;
-        println!("{:?}", job_list);
+        // get the latest inventory job for this vault
+        let latest_job = Repository::get_latest_job_by_action_vault(&trans, "InventoryRetrieval", &*vault.vault_arn).await?;
+        // if the job is older then the inventory date of the vault => launch new inventory job
+        match vault.inventory_date {
+            Some(inv_date) => {
+                if latest_job.creation_date < inv_date {
+                    // launch inventory job
+                }
+            },
+            None => {}
+        }
     }
 
     trans.commit().await?;
-    
-    // If the inventory of a vault is older than 1 week, launch an inventory job
-
     // Check inventory jobs and launch workers as needed
 
     // Check download jobs and launch workers as needed

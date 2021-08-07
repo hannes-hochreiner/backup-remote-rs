@@ -37,3 +37,25 @@ pub struct AwsJobListResponse {
     pub job_list: Vec<AwsJob>,
     pub marker: Option<String>,
 }
+
+impl TryFrom<&Row> for AwsJob {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &Row) -> Result<Self, Self::Error> {
+        Ok(AwsJob {
+            job_id: value.try_get("job_id")?,
+            action: value.try_get("action")?,
+            archive_id: value.try_get("archive_id")?,
+            archive_tree_hash: value.try_get("archive_tree_hash")?,
+            archive_size_in_bytes: value.try_get("archive_size_in_bytes")?,
+            completion_date: value.try_get("completion_date")?,
+            creation_date: value.try_get("creation_date")?,
+            inventory_size_in_bytes: value.try_get("inventory_size_in_bytes")?,
+            job_description: value.try_get("job_description")?,
+            tree_hash: value.try_get("tree_hash")?,
+            status_code: value.try_get("status_code")?,
+            status_message: value.try_get("status_message")?,
+            vault_arn: value.try_get("vault_arn")?,
+        })
+    }
+}
