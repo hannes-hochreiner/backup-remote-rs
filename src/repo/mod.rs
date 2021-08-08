@@ -1,11 +1,9 @@
-pub mod repo_vault;
-
 use anyhow::Result;
+use log::debug;
 use std::{convert::TryFrom, str};
 use tokio_postgres::{Client, NoTls, Transaction};
-use log::{debug};
 
-use crate::aws::{aws_vault::AwsVault, aws_job::AwsJob};
+use crate::aws::{aws_job::AwsJob, aws_vault::AwsVault};
 
 pub struct Repository {
     client: Client,
@@ -42,14 +40,11 @@ impl Repository {
         Ok(res)
     }
 
-    pub async fn create_vault(
-        transaction: &Transaction<'_>,
-        vault: &AwsVault,
-    ) -> Result<AwsVault> {
+    pub async fn create_vault(transaction: &Transaction<'_>, vault: &AwsVault) -> Result<AwsVault> {
         debug!("creating new vault");
         let rows = transaction.query(
-            "INSERT INTO vaults (creation_date, inventory_date, number_of_archives, size_in_bytes, vault_arn, vault_name) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *", 
-            &[&vault.creation_date, &vault.inventory_date, &vault.number_of_archives, &vault.size_in_bytes, &vault.vault_arn, &vault.vault_name]
+            "INSERT INTO vaults (creation_date, last_inventory_date, number_of_archives, size_in_bytes, vault_arn, vault_name) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *", 
+            &[&vault.creation_date, &vault.last_inventory_date, &vault.number_of_archives, &vault.size_in_bytes, &vault.vault_arn, &vault.vault_name]
         ).await?;
 
         match rows.len() {
@@ -61,8 +56,8 @@ impl Repository {
     pub async fn update_vault(transaction: &Transaction<'_>, vault: &AwsVault) -> Result<AwsVault> {
         debug!("updating vault");
         let rows = transaction.query(
-            "UPDATE vaults SET creation_date=$1, inventory_date=$2, number_of_archives=$3, size_in_bytes=$4, vault_name=$5 WHERE vault_arn=$6 RETURNING *", 
-            &[&vault.creation_date, &vault.inventory_date, &vault.number_of_archives, &vault.size_in_bytes, &vault.vault_name, &vault.vault_arn]
+            "UPDATE vaults SET creation_date=$1, last_inventory_date=$2, number_of_archives=$3, size_in_bytes=$4, vault_name=$5 WHERE vault_arn=$6 RETURNING *", 
+            &[&vault.creation_date, &vault.last_inventory_date, &vault.number_of_archives, &vault.size_in_bytes, &vault.vault_name, &vault.vault_arn]
         ).await?;
 
         match rows.len() {
@@ -71,10 +66,48 @@ impl Repository {
         }
     }
 
-    pub async fn create_job(
+    pub async fn reset_vaults_status_active(transaction: &Transaction<'_>) -> Result<()> {
+        transaction
+            .query("UPDATE vaults_status SET active=FALSE", &[])
+            .await?;
+        Ok(())
+    }
+
+    pub async fn set_vault_status_active(
         transaction: &Transaction<'_>,
-        job: &AwsJob,
-    ) -> Result<AwsJob> {
+        vault: &AwsVault,
+    ) -> Result<()> {
+        let rows = transaction
+            .query(
+                "SELECT * FROM vaults_status WHERE vault_arn=$1",
+                &[&vault.vault_arn],
+            )
+            .await?;
+
+        match rows.len() {
+            0 => {
+                transaction
+                    .query(
+                        "INSERT INTO vaults_status (vault_arn, active) VALUES ($1, TRUE)",
+                        &[&vault.vault_arn],
+                    )
+                    .await?;
+                Ok(())
+            }
+            1 => {
+                transaction
+                    .query(
+                        "UPDATE vaults_status SET active=TRUE WHERE vault_arn=$1",
+                        &[&vault.vault_arn],
+                    )
+                    .await?;
+                Ok(())
+            }
+            _ => Err(anyhow::Error::msg("error updating vault status active")),
+        }
+    }
+
+    pub async fn create_job(transaction: &Transaction<'_>, job: &AwsJob) -> Result<AwsJob> {
         debug!("creating new job");
         let rows = transaction.query(
             "INSERT INTO jobs (job_id, action, archive_id, archive_tree_hash, archive_size_in_bytes, completion_date, creation_date, inventory_size_in_bytes, job_description, tree_hash, status_code, status_message, vault_arn) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *", 
@@ -102,10 +135,9 @@ impl Repository {
 
     pub async fn get_job_by_id(transaction: &Transaction<'_>, job_id: &str) -> Result<AwsJob> {
         debug!("getting job \"{}\"", job_id);
-        let rows = transaction.query(
-            "SELECT * from jobs WHERE job_id=$1", 
-            &[&job_id]
-        ).await?;
+        let rows = transaction
+            .query("SELECT * from jobs WHERE job_id=$1", &[&job_id])
+            .await?;
 
         match rows.len() {
             1 => Ok(AwsJob::try_from(&rows[0])?),
@@ -113,8 +145,15 @@ impl Repository {
         }
     }
 
-    pub async fn get_latest_job_by_action_vault(transaction: &Transaction<'_>, action: &str, vault_arn: &str) -> Result<AwsJob> {
-        debug!("getting job by action \"{}\" and vault \"{}\"", action, vault_arn);
+    pub async fn get_latest_job_by_action_vault(
+        transaction: &Transaction<'_>,
+        action: &str,
+        vault_arn: &str,
+    ) -> Result<AwsJob> {
+        debug!(
+            "getting job by action \"{}\" and vault \"{}\"",
+            action, vault_arn
+        );
         let rows = transaction.query(
             "SELECT * from jobs WHERE action=$1 AND vault_arn=$2 ORDER BY creation_date DESC LIMIT 1", 
             &[&action, &vault_arn]
@@ -122,7 +161,44 @@ impl Repository {
 
         match rows.len() {
             1 => Ok(AwsJob::try_from(&rows[0])?),
-            _ => Err(anyhow::Error::msg("error getting latest job by action and vault")),
+            _ => Err(anyhow::Error::msg(
+                "error getting latest job by action and vault",
+            )),
+        }
+    }
+
+    pub async fn reset_jobs_status_active(transaction: &Transaction<'_>) -> Result<()> {
+        transaction
+            .query("UPDATE jobs_status SET active=FALSE", &[])
+            .await?;
+        Ok(())
+    }
+
+    pub async fn set_job_status_active(transaction: &Transaction<'_>, job: &AwsJob) -> Result<()> {
+        let rows = transaction
+            .query("SELECT * FROM jobs_status WHERE job_id=$1", &[&job.job_id])
+            .await?;
+
+        match rows.len() {
+            0 => {
+                transaction
+                    .query(
+                        "INSERT INTO jobs_status (job_id, active) VALUES ($1, TRUE)",
+                        &[&job.job_id],
+                    )
+                    .await?;
+                Ok(())
+            }
+            1 => {
+                transaction
+                    .query(
+                        "UPDATE jobs_status SET active=TRUE WHERE job_id=$1",
+                        &[&job.job_id],
+                    )
+                    .await?;
+                Ok(())
+            }
+            _ => Err(anyhow::Error::msg("error updating job status active")),
         }
     }
 }

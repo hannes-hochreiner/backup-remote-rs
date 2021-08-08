@@ -1,5 +1,5 @@
-use super::aws_vault::{AwsVaultListResponse, AwsVault};
-use super::aws_job::{AwsJobListResponse, AwsJob};
+use super::aws_job::{AwsJob, AwsJobListResponse};
+use super::aws_vault::{AwsVault, AwsVaultListResponse};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use data_encoding::HEXLOWER;
@@ -74,8 +74,6 @@ impl AwsGlacier {
             .header("x-amz-glacier-version", "2012-06-01")
             .body(Body::from(body))?;
         let resp = client.request(req).await?;
-    
-        // println!("Response: {}", resp.status());
 
         match resp.status() {
             hyper::StatusCode::OK => {
@@ -85,7 +83,73 @@ impl AwsGlacier {
                 Ok(resp_json.job_list)
             }
             _ => Err(anyhow::Error::msg("failed to retrieve vault list")),
-        }    
+        }
+    }
+
+    pub async fn init_inventory_job_for_vault(&self, vault: &AwsVault) -> Result<String> {
+        let http_method = "POST";
+        let body = format!("{{\"Type\": \"inventory-retrieval\", \"Description\": \"backup-remote\", \"Format\": \"JSON\"}}");
+        let https = HttpsConnector::new();
+        let client = Client::builder().build::<_, hyper::Body>(https);
+        let date_time = Utc::now();
+        let uri = format!(
+            "https://glacier.{}.amazonaws.com/-/vaults/{}/jobs",
+            self.region, vault.vault_name
+        )
+        .parse::<Uri>()?;
+        let hash_body = sha_256_hash(body.as_bytes())?;
+        let hash_request = hash_request(http_method, &uri, &date_time, &*hash_body)?;
+        let signature = self.signature(&date_time, &*hash_request)?;
+        let req = Request::builder()
+            .method(http_method)
+            .uri(uri)
+            .header("Authorization", format!("AWS4-HMAC-SHA256 Credential={}/{}/{}/glacier/aws4_request,SignedHeaders=host;x-amz-date;x-amz-glacier-version,Signature={}", self.key_id, date_time.format("%Y%m%d"), self.region, signature))
+            .header("x-amz-date", date_time.format("%Y%m%dT%H%M%SZ").to_string())
+            .header("x-amz-glacier-version", "2012-06-01")
+            .body(Body::from(body))?;
+        let resp = client.request(req).await?;
+
+        match resp.status() {
+            hyper::StatusCode::OK => Ok(resp.headers()["x-amz-job-id"].to_str()?.into()),
+            _ => Err(anyhow::Error::msg(format!(
+                "failed to initiate inventory job: {}",
+                resp.status()
+            ))),
+        }
+    }
+
+    pub async fn get_job_by_id_vault(&self, vault: &AwsVault, job_id: &str) -> Result<AwsJob> {
+        let http_method = "GET";
+        let body = String::new();
+        let https = HttpsConnector::new();
+        let client = Client::builder().build::<_, hyper::Body>(https);
+        let date_time = Utc::now();
+        let uri = format!(
+            "https://glacier.{}.amazonaws.com/-/vaults/{}/jobs/{}",
+            self.region, vault.vault_name, job_id
+        )
+        .parse::<Uri>()?;
+        let hash_body = sha_256_hash(body.as_bytes())?;
+        let hash_request = hash_request(http_method, &uri, &date_time, &*hash_body)?;
+        let signature = self.signature(&date_time, &*hash_request)?;
+        let req = Request::builder()
+            .method(http_method)
+            .uri(uri)
+            .header("Authorization", format!("AWS4-HMAC-SHA256 Credential={}/{}/{}/glacier/aws4_request,SignedHeaders=host;x-amz-date;x-amz-glacier-version,Signature={}", self.key_id, date_time.format("%Y%m%d"), self.region, signature))
+            .header("x-amz-date", date_time.format("%Y%m%dT%H%M%SZ").to_string())
+            .header("x-amz-glacier-version", "2012-06-01")
+            .body(Body::from(body))?;
+        let resp = client.request(req).await?;
+
+        match resp.status() {
+            hyper::StatusCode::OK => {
+                let resp_body = hyper::body::to_bytes(resp).await?;
+                let resp_json: AwsJob = serde_json::from_slice(&resp_body)?;
+
+                Ok(resp_json)
+            }
+            _ => Err(anyhow::Error::msg("failed to retrieve vault list")),
+        }
     }
 
     fn signature(&self, date_time: &DateTime<Utc>, request_hash: &str) -> Result<String> {

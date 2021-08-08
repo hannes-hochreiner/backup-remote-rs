@@ -21,16 +21,18 @@ The information is provided as environment variables.
 
 ## Setup
 
-An Ansible script automating this process can be found in the `ansible` folder.
+An Ansible script automating the setup can be found in the `ansible/playbooks` folder.
 The scripts expects the variables listed in the table below, which must be provided in a file names `vars.yml` in the Ansible folder.
 
 | variable name | description |
 | ------------- | ----------- |
 | postgres_password | db master password |
 | updater_password | password for the updater user |
+| worker_password | password for the worker user |
+| api_password | password for the api user |
 
 If the passwords are encrypted with Ansible vault, the ansible script can be run with the following command:
 
 ```bash
-ansible-playbook --ask-vault-pass ansible/db_create_pb.yml
+ansible-playbook --ask-vault-pass ansible/playbooks/create_db.yml
 ```

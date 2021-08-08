@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::{DateTime, FixedOffset};
-use serde::{Deserialize};
+use serde::Deserialize;
 use std::convert::TryFrom;
 use tokio_postgres::Row;
 
