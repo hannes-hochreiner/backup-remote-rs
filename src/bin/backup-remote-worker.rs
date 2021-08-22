@@ -35,6 +35,8 @@ async fn main() -> Result<()> {
         matches.value_of("key_id").unwrap(),
         matches.value_of("region").unwrap(),
     );
+    debug!("creating repository object");
+    let mut repo = Repository::new(matches.value_of("db_connection").unwrap()).await?;
     let aws_vaults = aws_glacier.list_vaults().await?;
 
     for vault in aws_vaults {
@@ -47,11 +49,23 @@ async fn main() -> Result<()> {
 
                     match &*job.status_code {
                         "Succeeded" => {
+                            let trans = repo.get_transaction().await?;
+                            Repository::delete_archive_associations(&trans, &vault).await?;
+
                             for archive in
                                 aws_glacier.get_inventory_job_result(&vault, &job).await?
                             {
-                                debug!("{:?}", archive);
+                                match Repository::create_archive(&trans, &archive).await {
+                                    Err(_) => {
+                                        Repository::update_archive(&trans, &archive).await?;
+                                    }
+                                    _ => {}
+                                };
+                                Repository::create_archive_association(&trans, &vault, &archive)
+                                    .await?;
                             }
+
+                            trans.commit().await?;
                         }
                         status_code => {
                             info!("Job status \"{}\" => skipping job", status_code);
