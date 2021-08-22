@@ -10,6 +10,7 @@ pub struct AwsJob {
     pub job_id: String,
     pub action: String,
     pub archive_id: Option<String>,
+    #[serde(rename(deserialize = "ArchiveSHA256TreeHash"))]
     pub archive_tree_hash: Option<String>,
     pub archive_size_in_bytes: Option<i64>,
     pub completion_date: Option<DateTime<FixedOffset>>,

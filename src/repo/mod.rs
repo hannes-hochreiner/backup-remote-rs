@@ -1,3 +1,5 @@
+pub mod repo_archive;
+
 use anyhow::Result;
 use log::debug;
 use std::{convert::TryFrom, str};

@@ -12,7 +12,7 @@ pub struct AwsArchive {
     pub creation_date: DateTime<FixedOffset>,
     pub size: i64,
     #[serde(rename(deserialize = "SHA256TreeHash"))]
-    pub sha256_tree_hash: String,
+    pub tree_hash: String,
 }
 
 impl TryFrom<&str> for AwsArchive {
@@ -41,7 +41,7 @@ impl TryFrom<&Row> for AwsArchive {
             archive_description: value.try_get("archive_description")?,
             creation_date: value.try_get("creation_date")?,
             size: value.try_get("size")?,
-            sha256_tree_hash: value.try_get("sha256_tree_hash")?,
+            tree_hash: value.try_get("tree_hash")?,
         })
     }
 }

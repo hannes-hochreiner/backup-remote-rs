@@ -17,7 +17,7 @@ CREATE TABLE archives (
   archive_description varchar(256),
   creation_date timestamp with time zone NOT NULL,
   size bigint NOT NULL,
-  sha256_tree_hash varchar(256) NOT NULL
+  tree_hash varchar(256) NOT NULL
 );
 
 CREATE TABLE vaults_archives {
