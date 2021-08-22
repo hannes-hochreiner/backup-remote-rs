@@ -13,14 +13,17 @@ CREATE TABLE vaults_status (
 );
 
 CREATE TABLE archives (
-  creation_date timestamp with time zone NOT NULL,
-  inventory_date timestamp with time zone,
-  vault_id varchar(256) REFERENCES vaults(vault_arn),
-  size_in_bytes bigint NOT NULL,
   archive_id varchar(256) PRIMARY KEY,
   archive_description varchar(256),
-  archive_hash varchar(256) NOT NULL
+  creation_date timestamp with time zone NOT NULL,
+  size bigint NOT NULL,
+  sha256_tree_hash varchar(256) NOT NULL
 );
+
+CREATE TABLE vaults_archives {
+  archive_id varchar(256) REFERENCES archives(archive_id),
+  vault_arn varchar(256) REFERENCES vaults(vault_arn)
+};
 
 CREATE TABLE jobs (
   job_id varchar(256) PRIMARY KEY,
@@ -61,6 +64,7 @@ GRANT SELECT, INSERT, UPDATE ON jobs_workers TO updater;
 
 CREATE ROLE worker LOGIN PASSWORD '{{worker_password}}';
 
+GRANT SELECT, INSERT, UPDATE ON archives TO worker;
 GRANT SELECT, INSERT, UPDATE ON jobs_workers TO worker;
 
 CREATE ROLE api LOGIN PASSWORD '{{api_password}}';

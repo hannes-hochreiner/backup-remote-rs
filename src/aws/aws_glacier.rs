@@ -1,3 +1,4 @@
+use super::aws_archive::{AwsArchive, AwsIventoryResponse};
 use super::aws_job::{AwsJob, AwsJobListResponse};
 use super::aws_vault::{AwsVault, AwsVaultListResponse};
 use anyhow::Result;
@@ -147,6 +148,44 @@ impl AwsGlacier {
                 let resp_json: AwsJob = serde_json::from_slice(&resp_body)?;
 
                 Ok(resp_json)
+            }
+            _ => Err(anyhow::Error::msg("failed to retrieve vault list")),
+        }
+    }
+
+    pub async fn get_inventory_job_result(
+        &self,
+        vault: &AwsVault,
+        job: &AwsJob,
+    ) -> Result<Vec<AwsArchive>> {
+        let http_method = "GET";
+        let body = "";
+        let https = HttpsConnector::new();
+        let client = Client::builder().build::<_, hyper::Body>(https);
+        let date_time = Utc::now();
+        let uri = format!(
+            "https://glacier.{}.amazonaws.com/-/vaults/{}/jobs/{}/output",
+            self.region, vault.vault_name, job.job_id
+        )
+        .parse::<Uri>()?;
+        let hash_body = sha_256_hash(body.as_bytes())?;
+        let hash_request = hash_request(http_method, &uri, &date_time, &*hash_body)?;
+        let signature = self.signature(&date_time, &*hash_request)?;
+        let req = Request::builder()
+            .method(http_method)
+            .uri(uri)
+            .header("Authorization", format!("AWS4-HMAC-SHA256 Credential={}/{}/{}/glacier/aws4_request,SignedHeaders=host;x-amz-date;x-amz-glacier-version,Signature={}", self.key_id, date_time.format("%Y%m%d"), self.region, signature))
+            .header("x-amz-date", date_time.format("%Y%m%dT%H%M%SZ").to_string())
+            .header("x-amz-glacier-version", "2012-06-01")
+            .body(Body::from(body))?;
+        let resp = client.request(req).await?;
+
+        match resp.status() {
+            hyper::StatusCode::OK => {
+                let resp_body = hyper::body::to_bytes(resp).await?;
+                let resp_json: AwsIventoryResponse = serde_json::from_slice(&resp_body)?;
+
+                Ok(resp_json.archive_list)
             }
             _ => Err(anyhow::Error::msg("failed to retrieve vault list")),
         }

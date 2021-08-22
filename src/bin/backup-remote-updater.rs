@@ -75,8 +75,6 @@ async fn main() -> Result<()> {
                 Ok(_) => Repository::update_job(&trans, &job).await?,
                 Err(_) => Repository::create_job(&trans, &job).await?,
             };
-
-            // dispatch workers
         }
 
         // get the latest inventory job for this vault
