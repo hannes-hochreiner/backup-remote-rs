@@ -1,5 +1,5 @@
 use super::Repository;
-use crate::aws::aws_vault::AwsVault;
+use crate::aws::{aws_archive::AwsArchive, aws_vault::AwsVault};
 use anyhow::Result;
 use log::debug;
 use std::convert::TryFrom;
@@ -83,5 +83,40 @@ impl Repository {
             }
             _ => Err(anyhow::Error::msg("error updating vault status active")),
         }
+    }
+
+    pub async fn delete_archive_associations(
+        transaction: &Transaction<'_>,
+        vault: &AwsVault,
+    ) -> Result<()> {
+        debug!(
+            "deleting archive associations for vault \"{}\"",
+            &vault.vault_name
+        );
+        transaction
+            .query(
+                "DELETE FROM vaults_archives WHERE vault_arn=$1",
+                &[&vault.vault_arn],
+            )
+            .await?;
+        Ok(())
+    }
+
+    pub async fn create_archive_association(
+        transaction: &Transaction<'_>,
+        vault: &AwsVault,
+        archive: &AwsArchive,
+    ) -> Result<()> {
+        debug!(
+            "creating associations to archive \"{}\" for vault \"{}\"",
+            &archive.archive_id, &vault.vault_name
+        );
+        transaction
+            .query(
+                "INSERT INTO vaults_archives (vault_arn, archive_id) VALUES ($1, $2)",
+                &[&vault.vault_arn, &archive.archive_id],
+            )
+            .await?;
+        Ok(())
     }
 }

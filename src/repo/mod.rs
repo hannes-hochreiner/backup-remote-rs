@@ -1,6 +1,6 @@
-pub mod repo_vault;
-pub mod repo_job;
 pub mod repo_archive;
+pub mod repo_job;
+pub mod repo_vault;
 
 use anyhow::Result;
 use std::str;

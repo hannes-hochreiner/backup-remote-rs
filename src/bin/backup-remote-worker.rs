@@ -1,6 +1,6 @@
 extern crate backup_remote_rs;
 use anyhow::Result;
-use backup_remote_rs::aws::{aws_glacier::AwsGlacier};
+use backup_remote_rs::aws::aws_glacier::AwsGlacier;
 use backup_remote_rs::repo::Repository;
 extern crate clap;
 use clap::{App, Arg};
@@ -47,15 +47,17 @@ async fn main() -> Result<()> {
 
                     match &*job.status_code {
                         "Succeeded" => {
-                            for archive in aws_glacier.get_inventory_job_result(&vault, &job).await? {
+                            for archive in
+                                aws_glacier.get_inventory_job_result(&vault, &job).await?
+                            {
                                 debug!("{:?}", archive);
                             }
-                        },
+                        }
                         status_code => {
                             info!("Job status \"{}\" => skipping job", status_code);
-                        },
+                        }
                     }
-                },
+                }
                 action => {
                     info!("Unkonwn job action found: \"{}\"", action);
                 }
