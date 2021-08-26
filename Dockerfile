@@ -3,7 +3,7 @@ RUN apt update && apt install librust-openssl-dev -y
 RUN mkdir -p /opt/backup-remote-rs
 COPY src /opt/backup-remote-rs/src
 COPY Cargo.* /opt/backup-remote-rs/
-RUN cd /opt/backup-remote-rs && cargo build --release --locked
+RUN cd /opt/backup-remote-rs && cargo build --release
 
 FROM debian:stable-slim AS updater
 MAINTAINER Hannes Hochreiner <hannes@hochreiner.net>
