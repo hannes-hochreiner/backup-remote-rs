@@ -52,7 +52,7 @@ impl AwsGlacier {
             }
             _ => {
                 debug!("{}", resp.status());
-                Err(anyhow::Error::msg("failed to retrieve vault list"))
+                Err(anyhow::Error::msg(format!("failed to retrieve vault list (status: {})", resp.status())))
             }
         }
     }
