@@ -16,3 +16,11 @@
       - postgresql://postgres:{{postgres_password}}@backup_remote_db:5432/backup_remote
       - -c
       - "{{ sql_script }}"
+- name: Sleep for 5 seconds and continue with play
+  wait_for:
+    timeout: 5
+  delegate_to: localhost
+- name: create db container
+  containers.podman.podman_container:
+    name: backup_remote_db_exec
+    state: absent
