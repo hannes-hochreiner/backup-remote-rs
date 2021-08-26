@@ -51,7 +51,7 @@ impl AwsGlacier {
                 Ok(resp_json.vault_list)
             }
             _ => {
-                debug!("{}", resp.status());
+                debug!("{:?}", resp);
                 Err(anyhow::Error::msg(format!("failed to retrieve vault list (status: {})", resp.status())))
             }
         }
@@ -87,7 +87,10 @@ impl AwsGlacier {
 
                 Ok(resp_json.job_list)
             }
-            _ => Err(anyhow::Error::msg("failed to retrieve vault list")),
+            _ => {
+                debug!("{:?}", resp);
+                Err(anyhow::Error::msg(format!("failed to list jobs for vault (status: {})", resp.status())))
+            },
         }
     }
 
@@ -116,10 +119,12 @@ impl AwsGlacier {
 
         match resp.status() {
             hyper::StatusCode::OK => Ok(resp.headers()["x-amz-job-id"].to_str()?.into()),
-            _ => Err(anyhow::Error::msg(format!(
+            _ => {
+                debug!("{:?}", resp);
+                Err(anyhow::Error::msg(format!(
                 "failed to initiate inventory job: {}",
                 resp.status()
-            ))),
+            )))},
         }
     }
 
@@ -153,7 +158,9 @@ impl AwsGlacier {
 
                 Ok(resp_json)
             }
-            _ => Err(anyhow::Error::msg("failed to retrieve vault list")),
+            _ => {
+                debug!("{:?}", resp);
+                Err(anyhow::Error::msg(format!("failed to get job by id (status: {})", resp.status())))},
         }
     }
 
@@ -192,7 +199,7 @@ impl AwsGlacier {
                 Ok(resp_json.archive_list)
             }
             _ => {
-                debug!("{}", resp.status());
+                debug!("{:?}", resp);
                 Err(anyhow::Error::msg(
                     "failed to retrieve inventory job result",
                 ))
