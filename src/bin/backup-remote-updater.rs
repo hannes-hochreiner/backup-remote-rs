@@ -62,19 +62,29 @@ async fn main() -> Result<()> {
         }
 
         // set vault status active
+        debug!("setting vault \"{}\" status active", vault.vault_name);
         Repository::set_vault_status_active(&trans, &vault).await?;
 
         // update the list of jobs for this vault
+        debug!("updating list of jobs for vault \"{}\"", vault.vault_name);
         Repository::reset_jobs_status_active(&trans).await?;
         let aws_jobs = aws_glacier.list_jobs_for_vault(&vault).await?;
 
         for job in aws_jobs {
-            Repository::set_job_status_active(&trans, &job).await?;
-
+            debug!("processing job \"{}\"", job.job_id);
             match Repository::get_job_by_id(&trans, &*job.job_id).await {
-                Ok(_) => Repository::update_job(&trans, &job).await?,
-                Err(_) => Repository::create_job(&trans, &job).await?,
+                Ok(_) => {
+                    debug!("updating job \"{}\"", job.job_id);
+                    Repository::update_job(&trans, &job).await?
+                },
+                Err(_) => {
+                    debug!("creating job \"{}\"", job.job_id);
+                    Repository::create_job(&trans, &job).await?
+                },
             };
+
+            debug!("setting job \"{}\" active", job.job_id);
+            Repository::set_job_status_active(&trans, &job).await?;
         }
 
         // get the latest inventory job for this vault
