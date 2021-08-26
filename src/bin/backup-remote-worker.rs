@@ -4,7 +4,8 @@ use backup_remote_rs::aws::aws_glacier::AwsGlacier;
 use backup_remote_rs::repo::Repository;
 extern crate clap;
 use clap::{App, Arg};
-use log::{debug, info};
+use log::{debug, error, info};
+use tokio::time::{sleep, Duration};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -29,14 +30,26 @@ async fn main() -> Result<()> {
         )
         .get_matches();
 
+    let secret_key = matches.value_of("secret_key").unwrap();
+    let key_id = matches.value_of("key_id").unwrap();
+    let region = matches.value_of("region").unwrap();
+    let db_connection = matches.value_of("db_connection").unwrap();
+
+    loop {
+        match update(secret_key, key_id, region, db_connection).await {
+            Ok(_) => info!("update succeeded"),
+            Err(e) => error!("{:?}", e),
+        }
+
+        sleep(Duration::from_secs(60 * 30)).await;
+    }
+}
+
+async fn update(secret_key: &str, key_id: &str, region: &str, db_connection: &str) -> Result<()> {
     debug!("creating aws glacier object");
-    let aws_glacier = AwsGlacier::new(
-        matches.value_of("secret_key").unwrap(),
-        matches.value_of("key_id").unwrap(),
-        matches.value_of("region").unwrap(),
-    );
+    let aws_glacier = AwsGlacier::new(secret_key, key_id, region);
     debug!("creating repository object");
-    let mut repo = Repository::new(matches.value_of("db_connection").unwrap()).await?;
+    let mut repo = Repository::new(db_connection).await?;
     let aws_vaults = aws_glacier.list_vaults().await?;
 
     for vault in aws_vaults {
