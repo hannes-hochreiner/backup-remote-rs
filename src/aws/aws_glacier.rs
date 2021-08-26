@@ -52,7 +52,10 @@ impl AwsGlacier {
             }
             _ => {
                 debug!("{:?}", resp);
-                Err(anyhow::Error::msg(format!("failed to retrieve vault list (status: {})", resp.status())))
+                Err(anyhow::Error::msg(format!(
+                    "failed to retrieve vault list (status: {})",
+                    resp.status()
+                )))
             }
         }
     }
@@ -89,8 +92,11 @@ impl AwsGlacier {
             }
             _ => {
                 debug!("{:?}", resp);
-                Err(anyhow::Error::msg(format!("failed to list jobs for vault (status: {})", resp.status())))
-            },
+                Err(anyhow::Error::msg(format!(
+                    "failed to list jobs for vault (status: {})",
+                    resp.status()
+                )))
+            }
         }
     }
 
@@ -122,9 +128,10 @@ impl AwsGlacier {
             _ => {
                 debug!("{:?}", resp);
                 Err(anyhow::Error::msg(format!(
-                "failed to initiate inventory job: {}",
-                resp.status()
-            )))},
+                    "failed to initiate inventory job: {}",
+                    resp.status()
+                )))
+            }
         }
     }
 
@@ -160,7 +167,11 @@ impl AwsGlacier {
             }
             _ => {
                 debug!("{:?}", resp);
-                Err(anyhow::Error::msg(format!("failed to get job by id (status: {})", resp.status())))},
+                Err(anyhow::Error::msg(format!(
+                    "failed to get job by id (status: {})",
+                    resp.status()
+                )))
+            }
         }
     }
 
