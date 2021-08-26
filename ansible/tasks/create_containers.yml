@@ -24,3 +24,15 @@
       AWS_KEY_ID: "{{aws_key_id}}"
       RUST_LOG: "debug"
     network: backup_remote_network
+- name: create worker container
+  containers.podman.podman_container:
+    name: backup_remote_worker
+    state: present
+    image: docker.io/h0h4/backup-remote-rs:main-worker
+    env:
+      DB_CONNECTION: "postgresql://updater:{{updater_password}}@backup_remote_db:5432/backup_remote"
+      AWS_REGION: "eu-central-1"
+      AWS_SECRET_KEY: "{{aws_secret_key}}"
+      AWS_KEY_ID: "{{aws_key_id}}"
+      RUST_LOG: "debug"
+    network: backup_remote_network
