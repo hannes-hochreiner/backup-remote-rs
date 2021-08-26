@@ -7,6 +7,7 @@ use data_encoding::HEXLOWER;
 use hyper::Uri;
 use hyper::{Body, Client, Request};
 use hyper_tls::HttpsConnector;
+use log::debug;
 use ring::{digest, hmac};
 
 pub struct AwsGlacier {
@@ -49,7 +50,10 @@ impl AwsGlacier {
 
                 Ok(resp_json.vault_list)
             }
-            _ => Err(anyhow::Error::msg("failed to retrieve vault list")),
+            _ => {
+                debug!("{}", resp.status());
+                Err(anyhow::Error::msg("failed to retrieve vault list"))
+            }
         }
     }
 
@@ -187,7 +191,12 @@ impl AwsGlacier {
 
                 Ok(resp_json.archive_list)
             }
-            _ => Err(anyhow::Error::msg("failed to retrieve vault list")),
+            _ => {
+                debug!("{}", resp.status());
+                Err(anyhow::Error::msg(
+                    "failed to retrieve inventory job result",
+                ))
+            }
         }
     }
 

@@ -5,7 +5,7 @@
     tasks:
     - name: Include variables
       include_vars: ../vars.yml
-    - name: Create container
-      include: ../tasks/create_container.yml
+    - name: Create containers
+      include: ../tasks/create_containers.yml
     - name: Init Db
       include: ../tasks/init_db.yml

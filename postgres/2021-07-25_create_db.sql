@@ -20,10 +20,10 @@ CREATE TABLE archives (
   tree_hash varchar(256) NOT NULL
 );
 
-CREATE TABLE vaults_archives {
+CREATE TABLE vaults_archives (
   archive_id varchar(256) REFERENCES archives(archive_id),
   vault_arn varchar(256) REFERENCES vaults(vault_arn)
-};
+);
 
 CREATE TABLE jobs (
   job_id varchar(256) PRIMARY KEY,

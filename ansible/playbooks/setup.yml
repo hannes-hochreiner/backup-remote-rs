@@ -1,0 +1,8 @@
+---
+  - name: "set up backup-remote"
+    hosts: backup_remote
+    tasks:
+    - name: Include variables
+      include_vars: ../vars.yml
+    - name: Create containers
+      include: ../tasks/create_containers.yml

@@ -1,0 +1,8 @@
+---
+  - name: "init backup-remote"
+    hosts: backup_remote
+    tasks:
+    - name: Include variables
+      include_vars: ../vars.yml
+    - name: Init db
+      include: ../tasks/init_db.yml

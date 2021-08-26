@@ -17,3 +17,4 @@ Cargo.lock
 # own
 notes.txt
 ansible/vars.yml
+ansible/hosts.yml

@@ -2,5 +2,17 @@
   set_fact:
     sql_script: "{{lookup('template', '../../postgres/2021-07-25_create_db.sql') }}"
 
-- name: "Execute script from variable"
-  command: "/usr/bin/psql postgresql://postgres:{{postgres_password}}@localhost:5432/backup_remote -c \"{{ sql_script }}\""
+# - name: "Execute script from variable"
+#   command: "/usr/bin/psql postgresql://postgres:{{postgres_password}}@localhost:5432/backup_remote -c \"{{ sql_script }}\""
+- name: create db container
+  containers.podman.podman_container:
+    name: backup_remote_db_exec
+    state: present
+    recreate: yes
+    image: docker.io/postgres:alpine
+    network: backup_remote_network
+    command:
+      - /usr/local/bin/psql
+      - postgresql://postgres:{{postgres_password}}@backup_remote_db:5432/backup_remote
+      - -c
+      - "{{ sql_script }}"

@@ -1,0 +1,26 @@
+- name: create network
+  containers.podman.podman_network:
+    name: backup_remote_network
+- name: create db container
+  containers.podman.podman_container:
+    name: backup_remote_db
+    state: present
+    image: docker.io/postgres:alpine
+    ports:
+      - "5432:5432"
+    env:
+      POSTGRES_DB: "backup_remote"
+      POSTGRES_PASSWORD: "{{postgres_password}}"
+    network: backup_remote_network
+- name: create updater container
+  containers.podman.podman_container:
+    name: backup_remote_updater
+    state: present
+    image: docker.io/h0h4/backup-remote-rs:main-updater
+    env:
+      DB_CONNECTION: "postgresql://updater:{{updater_password}}@backup_remote_db:5432/backup_remote"
+      AWS_REGION: "eu-central-1"
+      AWS_SECRET_KEY: "{{aws_secret_key}}"
+      AWS_KEY_ID: "{{aws_key_id}}"
+      RUST_LOG: "debug"
+    network: backup_remote_network
