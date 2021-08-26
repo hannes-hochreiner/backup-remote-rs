@@ -118,7 +118,7 @@ impl AwsGlacier {
         let resp = client.request(req).await?;
 
         match resp.status() {
-            hyper::StatusCode::OK => Ok(resp.headers()["x-amz-job-id"].to_str()?.into()),
+            hyper::StatusCode::ACCEPTED => Ok(resp.headers()["x-amz-job-id"].to_str()?.into()),
             _ => {
                 debug!("{:?}", resp);
                 Err(anyhow::Error::msg(format!(
